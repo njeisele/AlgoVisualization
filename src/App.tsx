@@ -9,6 +9,7 @@ import {
   Route,
   Link
 } from "react-router-dom";
+import QuickSortCanvas from "./QuickSortCanvas";
 
 /*
 <Router>
@@ -25,7 +26,9 @@ function App() {
     <div className="App">
       <header className="App-header">
           {/* <Canvas /> */}
-          { <GrahamCanvas /> }
+          { /* <GrahamCanvas /> */}
+          { <QuickSortCanvas /> }
+
       </header>
     </div>
   );

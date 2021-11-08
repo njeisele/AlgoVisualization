@@ -175,11 +175,11 @@ function GrahamCanvas() {
       });
 
     // Shading effect to correspond to sorting order
-    const redChannel = 255;
+    const blueChannel = 255;
     for (let i = 0; i < nodes.length; i++) {
-        const color = Math.round(redChannel * i / nodes.length);
+        const color = Math.round(blueChannel * i / nodes.length);
         const colorString = color.toString();
-        nodes[i].color = `rgb(${colorString},0,0)`;
+        nodes[i].color = `rgb(0,0,${colorString})`;
         console.log(nodes[i].color);
         reDraw(nodes, edges);
         await new Promise(f => setTimeout(f, 500));
@@ -223,7 +223,7 @@ function GrahamCanvas() {
         if (removedNode) {
           nodes.forEach(n => {
             if (n.id === removedNode.id) {
-              n.color = "yellow"; // Removed
+              n.color = "red"; // Removed
             }
           });
         }
