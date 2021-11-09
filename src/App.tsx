@@ -25,9 +25,9 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-          {/* <Canvas /> */}
+          {<Canvas /> }
           { /* <GrahamCanvas /> */}
-          { <QuickSortCanvas /> }
+          { /*<QuickSortCanvas /> */}
 
       </header>
     </div>

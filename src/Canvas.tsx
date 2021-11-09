@@ -1,3 +1,15 @@
+/*
+  TODO: for a node popped off queue, we know its shortest path so its edge going
+  in should be blue. Other backedges should be red
+
+  // TODO: When considering/comparing an edge, draw it
+
+  TODO: I think edges maintain nodes in order they were connected so this
+  is creating a wacky effect?? look into if we are treating this as a Directed or
+  non directed graph???
+
+*/
+
 import { createCanvas } from "canvas";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -76,25 +88,9 @@ function Canvas() {
     return null;
   }
 
-  function drawCircle(x: number, y: number, visited? : boolean) {
-    if (context && canvas) {
-      // TODO: Bug when dev tools comes up
-      let color = "";
-      if (visited === true) {
-          color = "blue"
-      } else {
-        color = nodes.length === 0 ? sourceColor : "#444444"
-      }
-      context.beginPath();
-      context.arc(x, y, radius, 0, 2 * Math.PI, false);
-      context.fillStyle = color;
-      context.fill();
-      context.lineWidth = 5;
-      context.strokeStyle = color; // special color for source
-      context.stroke();
-      const n: Node = { id: nodes.length, x, y, radius };
+  function makeNode(x: number, y: number, visited? : boolean) {
+      const n: Node = { id: nodes.length, x, y, radius, prev: null, visited };
       nodes.push(n);
-    }
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -125,15 +121,7 @@ function Canvas() {
   }
 
   function justDrawEdge(n1: Node | null, n2: Node | null, color?: string) {
-    if (n1 != null && n2 != null && n1.id != n2.id && context) {
-      context.beginPath(); // Start a new path
-      if (color) {
-        context.strokeStyle = color;
-      }
-      context.moveTo(n1.x, n1.y); // Move the pen to (30, 50)
-      context.lineTo(n2.x, n2.y); // Draw a line to (150, 100)
-      context.stroke();
-    }
+    
     setCircleMouseDownIn(null); // reset
   }
 
@@ -156,7 +144,9 @@ function Canvas() {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        drawCircle(x, y);
+        makeNode(x, y);
+
+        redraw(edges, null, nodes);
       }
     }
     setIsDragging(false); // Mouse is no longer down
@@ -200,8 +190,11 @@ function Canvas() {
             n.visited = true;
             currentNode = n;
             // When we visit a node, recolor it
-            drawCircle(n.x, n.y, true);
-            colorEdges(getBackEdges(n), "blue"); // Highlight this path for animation
+
+            // TODO: highlight this
+            redraw(edges, null, nodes);
+            //makeNode(n.x, n.y, true);
+            //colorEdges(getBackEdges(n), "blue"); // Highlight this path for animation
             await new Promise(f => setTimeout(f, 1000)); // Wait so they can see animation
           }
         }
@@ -222,22 +215,23 @@ function Canvas() {
             // If the other node has another path to it, draw that so we can compare
             colorEdges(otherNodeOriginalBackEdges, "red"); // new edge we are looking at
             if (otherNode.visited !== true) {
-              colorEdges([edge], "purple"); // new edge we are looking at
+              //colorEdges([edge], "purple"); // new edge we are looking at
+              redraw(edges, edge, nodes);
               setAltNum(distances.get(otherNode.id));
               const newDistance = edge.w + distances.get(current);
               setCurrentNum(newDistance);
               await new Promise(f => setTimeout(f, 1000)); // Wait so they can see animation
-              colorEdges([edge], "gray"); // new edge we are looking at
+              
               if (distances.get(otherNode.id) > newDistance) {
                 distances.set(otherNode.id, newDistance);
                 otherNode.prev = edge;
               }
             }
-            colorEdges(otherNodeOriginalBackEdges, "gray"); // return to normal
+            //colorEdges(otherNodeOriginalBackEdges, "gray"); // return to normal
           }
         }
 
-        currentNode && colorEdges(getBackEdges(currentNode), "gray"); //Un highlight
+        //currentNode && colorEdges(getBackEdges(currentNode), "gray"); //Un highlight
       }
     }
   }
@@ -265,6 +259,110 @@ function Canvas() {
     }
   }
 
+  //  arrow code from here: https://riptutorial.com/html5-canvas/example/18136/line-with-arrowheads
+  function drawLineWithArrows(e: Edge, color: string){
+    let x0, y0, x1, y1;
+    x0 = e.n1.x;
+    y0 = e.n1.y;
+    x1 = e.n2.x;
+    y1 = e.n2.y;
+    const aWidth = 10;
+    const aLength = 10;
+    const arrowStart = false;
+    const arrowEnd = true;
+    if (context) {
+      var dx=x1-x0;
+    var dy=y1-y0;
+    var angle=Math.atan2(dy,dx);
+    var length=Math.sqrt(dx*dx+dy*dy);
+    context.translate(x0,y0);
+    context.rotate(angle);
+    context.beginPath();
+    context.moveTo(0,0);
+    context.lineTo(length,0);
+    context.strokeStyle = color; 
+    if(arrowStart){
+      context.moveTo(aLength,-aWidth);
+      context.lineTo(0,0);
+      context.lineTo(aLength,aWidth);
+    }
+    if(arrowEnd){
+      context.moveTo(length-aLength,-aWidth);
+      context.lineTo(length,0);
+      context.lineTo(length-aLength,aWidth);
+    }
+    //
+    context.stroke();
+    context.setTransform(1,0,0,1,0,0);
+    }
+}
+
+  function drawNodes(nodes: Node[]) {
+    if (context && canvas) {
+      nodes.forEach((n) => {
+      let color = "";
+      if (n.visited === true) {
+          color = "blue"
+      } else {
+        color = n.id === 0 ? sourceColor : "#444444"
+      }
+      context.beginPath();
+      context.arc(n.x, n.y, radius, 0, 2 * Math.PI, false);
+      context.fillStyle = color;
+      context.fill();
+      context.lineWidth = 5;
+      context.strokeStyle = color; // special color for source
+      context.stroke();
+      // If this node is visited, color its back edge w/ an arrow to show shortest path
+      if (n.prev) {
+        if (n.visited) {
+          // shortest path edge in
+          drawLineWithArrows(n.prev, "#0096FF");
+        } else {
+          // tentative path in
+          drawLineWithArrows(n.prev, "red");
+        }
+      } else {
+        // no path to node yet
+
+      }
+      })
+    }
+  }
+
+  function drawEdges(edges: Edge[], color: string) {
+    edges.forEach((e) => {
+      if (e.n1 != null && e.n2 != null && e.n1.id != e.n2.id && context) {
+        context.beginPath(); // Start a new path
+        if (color) {
+          context.strokeStyle = color;
+        }
+        context.moveTo(e.n1.x, e.n1.y); 
+        context.lineTo(e.n2.x, e.n2.y);
+        context.stroke();
+      }
+    })
+  }
+
+  function redraw(
+    edges: Edge[],
+    considerationEdge: Edge | null,
+    nodes: Node[]
+  ) {
+    if (context) {
+      context.fillStyle = "#AAAAAA";
+      context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+      
+      drawEdges(edges, "black");
+      drawNodes(nodes);
+      // Edge we are comparing current dist w/ TODO: check this
+      if (considerationEdge) {
+        drawEdges([considerationEdge], "purple");
+      }
+    }
+  }
+
+
   function clear() {
     setNodes([]);
     setEdges([]);
@@ -279,11 +377,11 @@ function Canvas() {
       >
         Run Djikstra
       </button>
-      <button style={{ marginBottom: "20px", marginTop: "5px", marginRight: "50px" }}
+      {/*<button style={{ marginBottom: "20px", marginTop: "5px", marginRight: "50px" }}
         onClick={() => djikstra()}
       >
         Re-run (In development)
-      </button>
+  </button> */}
       <button style={{ marginBottom: "20px", marginTop: "5px", marginRight: "50px" }}
         onClick={() => clear()}
       >
