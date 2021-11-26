@@ -301,11 +301,6 @@ function GrahamCanvas() {
         Run Graham Scan
       </button>
       <button style={{ marginBottom: "20px", marginTop: "5px", marginRight: "50px" }}
-        onClick={() => graham()}
-      >
-        Re-run (In development)
-      </button>
-      <button style={{ marginBottom: "20px", marginTop: "5px", marginRight: "50px" }}
         onClick={() => clear()}
       >
         Clear

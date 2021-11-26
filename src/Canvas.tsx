@@ -15,6 +15,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 import _ from 'lodash';
 
+// TODO: make edges one way
+
 interface Node {
   id: number;
   x: number;
@@ -25,8 +27,8 @@ interface Node {
 }
 
 interface Edge {
-  n1: Node;
-  n2: Node;
+  start: Node;
+  end: Node;
   w: number; // Weight will just be based off the visual length of the edge
 }
 
@@ -38,6 +40,7 @@ function Canvas() {
   const [context, setContext] = useState<CanvasRenderingContext2D | null>();
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const [solutionEdges, setSolutionEdges] = useState<Edge[]>([]);
   const [mouseDownPosX, setMouseDownPosX] = useState(0);
   const [mouseDownPosY, setMouseDownPosY] = useState(0);
   //const [mouseUpPosX, setMouseUpPosX] = useState(0);
@@ -105,17 +108,10 @@ function Canvas() {
     }
   }
 
-  function drawEdge(n1: Node | null, n2: Node | null, color?: string) {
-    if (n1 != null && n2 != null && n1.id != n2.id && context) {
-      context.beginPath(); // Start a new path
-      if (color) {
-        context.strokeStyle = color;
-      }
-      context.moveTo(n1.x, n1.y); // Move the pen to (30, 50)
-      context.lineTo(n2.x, n2.y); // Draw a line to (150, 100)
-      context.stroke();
-      const w = Math.pow(n1.x - n2.x, 2) + Math.pow(n1.y - n2.y, 2);
-      edges.push({ n1, n2, w });
+  function createEdge(n1: Node | null, n2: Node | null, color?: string) {
+    if (n1 !== null && n2 !== null && n1.id !== n2.id && context) {
+      const w = Math.sqrt(Math.pow(n1.x - n2.x, 2) + Math.pow(n1.y - n2.y, 2));
+      edges.push({ start: n1, end: n2, w });
     }
     setCircleMouseDownIn(null); // reset
   }
@@ -134,12 +130,13 @@ function Canvas() {
       mouseUpY = mouseUpY - rect.top;
       // If this is a different place than down, this was a drag
       if (
-        mouseUpX != mouseDownPosX &&
-        mouseUpY != mouseDownPosY &&
+        mouseUpX !== mouseDownPosX &&
+        mouseUpY !== mouseDownPosY &&
         isDragging
       ) {
         const upCircle = isInACircle(mouseUpX, mouseUpY);
-        drawEdge(circleMouseDownIn, upCircle);
+        createEdge(circleMouseDownIn, upCircle);
+        redraw(edges, null, nodes);
       } else {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -189,26 +186,24 @@ function Canvas() {
           if (n.id === current) {
             n.visited = true;
             currentNode = n;
-            // When we visit a node, recolor it
-
-            // TODO: highlight this
+            if (currentNode?.prev) {
+              solutionEdges.push(currentNode?.prev);
+            }
             redraw(edges, null, nodes);
             //makeNode(n.x, n.y, true);
             //colorEdges(getBackEdges(n), "blue"); // Highlight this path for animation
             await new Promise(f => setTimeout(f, 1000)); // Wait so they can see animation
           }
         }
-        
-        
+        // Add to solution edges for visualization
         nodesToVisit.delete(current); // remove this one
 
         for (const edge of edges) {
           let otherNode;
-          if (edge.n1.id === current) {
-            otherNode = edge.n2;
-          } else if (edge.n2.id === current) {
-            otherNode = edge.n1;
-          }
+          // TODO: think of logic here?
+          if (edge.start.id === current) {
+            otherNode = edge.end;
+          } 
           if (otherNode) {
             // need to store the back edges b/c they might change
             const otherNodeOriginalBackEdges = getBackEdges(otherNode);
@@ -221,11 +216,15 @@ function Canvas() {
               const newDistance = edge.w + distances.get(current);
               setCurrentNum(newDistance);
               await new Promise(f => setTimeout(f, 1000)); // Wait so they can see animation
-              
+              console.log(currentNode, otherNode, edge);
+              console.log(newDistance);
+
+              // Somehow this is getting set
               if (distances.get(otherNode.id) > newDistance) {
                 distances.set(otherNode.id, newDistance);
                 otherNode.prev = edge;
               }
+              console.log(distances);
             }
             //colorEdges(otherNodeOriginalBackEdges, "gray"); // return to normal
           }
@@ -239,61 +238,55 @@ function Canvas() {
   // Follow back pointers to get the edges to the source
   function getBackEdges(n: Node): Edge[] {
     let current = n;
-    const edges: Edge[] = [];
+    const backEdges: Edge[] = [];
     while (current.prev) {
-      edges.push(current.prev);
-      // Don't know which one is current
-      if (current.prev.n1 === current) {
-        current = current.prev.n2;
-      } else {
-        current = current.prev.n1;
-      }
-      
+      backEdges.push(current.prev);
+      current = current.prev.start;
     } 
-    return edges;
+    return backEdges;
   }
 
   function colorEdges(edges: Edge[], color: string) {
     for (const e of edges) {
-      justDrawEdge(e.n1, e.n2, color)
+      justDrawEdge(e.start, e.end, color)
     }
   }
 
   //  arrow code from here: https://riptutorial.com/html5-canvas/example/18136/line-with-arrowheads
   function drawLineWithArrows(e: Edge, color: string){
     let x0, y0, x1, y1;
-    x0 = e.n1.x;
-    y0 = e.n1.y;
-    x1 = e.n2.x;
-    y1 = e.n2.y;
+    x0 = e.start.x;
+    y0 = e.start.y;
+    x1 = e.end.x;
+    y1 = e.end.y;
     const aWidth = 10;
     const aLength = 10;
     const arrowStart = false;
     const arrowEnd = true;
     if (context) {
       var dx=x1-x0;
-    var dy=y1-y0;
-    var angle=Math.atan2(dy,dx);
-    var length=Math.sqrt(dx*dx+dy*dy);
-    context.translate(x0,y0);
-    context.rotate(angle);
-    context.beginPath();
-    context.moveTo(0,0);
-    context.lineTo(length,0);
-    context.strokeStyle = color; 
-    if(arrowStart){
-      context.moveTo(aLength,-aWidth);
-      context.lineTo(0,0);
-      context.lineTo(aLength,aWidth);
-    }
-    if(arrowEnd){
-      context.moveTo(length-aLength,-aWidth);
+      var dy=y1-y0;
+      var angle=Math.atan2(dy,dx);
+      var length=Math.sqrt(dx*dx+dy*dy);
+      context.translate(x0,y0);
+      context.rotate(angle);
+      context.beginPath();
+      context.moveTo(0,0);
       context.lineTo(length,0);
-      context.lineTo(length-aLength,aWidth);
-    }
-    //
-    context.stroke();
-    context.setTransform(1,0,0,1,0,0);
+      context.strokeStyle = color; 
+      if(arrowStart){
+        context.moveTo(aLength,-aWidth);
+        context.lineTo(0,0);
+        context.lineTo(aLength,aWidth);
+      }
+      if(arrowEnd){
+        context.moveTo(length-aLength,-aWidth);
+        context.lineTo(length,0);
+        context.lineTo(length-aLength,aWidth);
+      }
+      //
+      context.stroke();
+      context.setTransform(1,0,0,1,0,0);
     }
 }
 
@@ -302,7 +295,7 @@ function Canvas() {
       nodes.forEach((n) => {
       let color = "";
       if (n.visited === true) {
-          color = "blue"
+          color = "green" // Green means visited
       } else {
         color = n.id === 0 ? sourceColor : "#444444"
       }
@@ -332,14 +325,8 @@ function Canvas() {
 
   function drawEdges(edges: Edge[], color: string) {
     edges.forEach((e) => {
-      if (e.n1 != null && e.n2 != null && e.n1.id != e.n2.id && context) {
-        context.beginPath(); // Start a new path
-        if (color) {
-          context.strokeStyle = color;
-        }
-        context.moveTo(e.n1.x, e.n1.y); 
-        context.lineTo(e.n2.x, e.n2.y);
-        context.stroke();
+      if (e.start !== null && e.end !== null && e.start.id !== e.end.id && context) {
+        drawLineWithArrows(e, color);
       }
     })
   }
@@ -353,8 +340,10 @@ function Canvas() {
       context.fillStyle = "#AAAAAA";
       context.fillRect(0, 0, context.canvas.width, context.canvas.height);
       
-      drawEdges(edges, "black");
       drawNodes(nodes);
+      drawEdges(edges, "black");
+      drawEdges(solutionEdges, "blue");
+      
       // Edge we are comparing current dist w/ TODO: check this
       if (considerationEdge) {
         drawEdges([considerationEdge], "purple");
@@ -388,14 +377,14 @@ function Canvas() {
         Clear
       </button>
       </span>
-        <span>
+        {/*<span>
         <p style={{color: "purple"}}>
           {currentNum}
         </p>
         <p style={{color: "red"}}>
           {altNum}
         </p>
-        </span>
+        </span> */}
       </div>
       <canvas
         onMouseDown={(e) => {
