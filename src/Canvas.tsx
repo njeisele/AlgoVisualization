@@ -1,22 +1,9 @@
-/*
-  TODO: for a node popped off queue, we know its shortest path so its edge going
-  in should be blue. Other backedges should be red
-
-  // TODO: When considering/comparing an edge, draw it
-
-  TODO: I think edges maintain nodes in order they were connected so this
-  is creating a wacky effect?? look into if we are treating this as a Directed or
-  non directed graph???
-
-*/
-
 import { createCanvas } from "canvas";
 import React, { useEffect, useRef, useState } from "react";
 
 import _ from 'lodash';
 
-// TODO: make edges one way
-
+// TODO: 1 way edges?
 interface Node {
   id: number;
   x: number;
@@ -32,7 +19,6 @@ interface Edge {
   w: number; // Weight will just be based off the visual length of the edge
 }
 
-// TODO: ignore collisions for now
 
 function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,11 +59,6 @@ function Canvas() {
       context.fillRect(0, 0, context.canvas.width, context.canvas.height);
     }
   }, []);
-
-  // TODO: add buttons
-  // 1) set up nodes and edges  (wipe everything before hand)
-  // 2) show animation of the paths
-  // 3) Enable clicking to find shortest path
 
   function isInACircle(x: number, y: number): Node | null {
     for (const n of nodes) {
@@ -161,10 +142,9 @@ function Canvas() {
         }
       }
       console.log('d: ', distances);
-      // Optimally this would be a PQ but not doing this for simplicity and b/c this will only be ona  few nodes
+      // Optimally this would be a PQ but for simplicity can use a set
       const nodesToVisit: Set<number> = new Set(nodes.map((n) => n.id));
       let current;
-      console.log('n: ', nodesToVisit);
       while (nodesToVisit.size > 0) {
         // Find which node to visit
         let minDistance = Infinity;
@@ -200,7 +180,7 @@ function Canvas() {
 
         for (const edge of edges) {
           let otherNode;
-          // TODO: think of logic here?
+          // TODO: logic here?
           if (edge.start.id === current) {
             otherNode = edge.end;
           } 

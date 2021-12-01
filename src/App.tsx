@@ -11,24 +11,15 @@ import {
 } from "react-router-dom";
 import QuickSortCanvas from "./QuickSortCanvas";
 
-/*
-<Router>
-<Link to="/dijkstra">
-  <Canvas />
-</Link>
-<Link to="/graham">
-  <Canvas />
-</Link>
-</Router>
-*/
+
 function App() {
   return (
     <div className="App">
       <header className="App-header">
-          { /*<Canvas /> */ }
-          {/* <GrahamCanvas /> */}
-          { <QuickSortCanvas /> }
-
+          {/* Comment out one to visualiz */}
+          {/* <Canvas /> */ }
+          {<GrahamCanvas /> }
+          {/* <QuickSortCanvas /> */}
       </header>
     </div>
   );

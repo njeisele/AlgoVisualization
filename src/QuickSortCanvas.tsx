@@ -17,19 +17,20 @@ function QuickSortCanvas() {
   const [pivotElement, setPivotElement] = useState<number>(-1);
   const speed = 1000;
 
-  async function quickSort() {
+  async function quickSort(currentNumbers: number[] | undefined, visualize: boolean) {
     setLeft(0);
-    setRight(numbers?.length);
-    if (numbers) {
-      console.log(" intitial: ", numbers);
-      await partition(0, numbers.length);
+    setRight(currentNumbers?.length);
+    if (currentNumbers) {
+      console.log(" intitial: ", currentNumbers);
+      await partition(currentNumbers, 0, currentNumbers.length);
       console.log("FINAL");
-      redraw(-1, -1, numbers, -1, true);
+      redraw(-1, -1, currentNumbers, -1, true);
     }
+    return currentNumbers;
   }
 
-  async function partition(start: number, end: number) {
-    if (numbers) {
+  async function partition(currentNumbers: number[], start: number, end: number) {
+    if (currentNumbers) {
       //console.log("calling with: ", start, end);
       //console.log("nums are: ", numbers.slice(start, end));
       // Base case
@@ -39,20 +40,20 @@ function QuickSortCanvas() {
         if (count === 0 || count === 1) {
           return;
         } else {
-          const temp = numbers[start];
-          if (numbers[start] > numbers[start + 1]) {
-            numbers[start] = numbers[start + 1];
-            numbers[start + 1] = temp;
+          const temp = currentNumbers[start];
+          if (currentNumbers[start] > currentNumbers[start + 1]) {
+            currentNumbers[start] = currentNumbers[start + 1];
+            currentNumbers[start + 1] = temp;
           }
         }
         return;
       }
 
       // just select middle element for pivot
-      const pivotElement = numbers[Math.floor((end + start) / 2)];
+      const pivotElement = currentNumbers[Math.floor((end + start) / 2)];
 
       // Visualization
-      redraw(start, end, numbers, pivotElement, false);
+      redraw(start, end, currentNumbers, pivotElement, false);
       await new Promise((f) => setTimeout(f, speed));
 
       // Count # times this element shows up
@@ -60,9 +61,9 @@ function QuickSortCanvas() {
       // Count # elements less than pivot
       let lessThanPivotCount = 0;
       for (let i = start; i < end; i++) {
-        if (numbers[i] === pivotElement) {
+        if (currentNumbers[i] === pivotElement) {
           pivotCount++;
-        } else if (numbers[i] < pivotElement) {
+        } else if (currentNumbers[i] < pivotElement) {
           lessThanPivotCount++;
         }
       }
@@ -78,16 +79,16 @@ function QuickSortCanvas() {
         ) {
           // Skip over the pivot spots
         } else {
-          if (numbers[i] === pivotElement) {
+          if (currentNumbers[i] === pivotElement) {
             let pivotPlacement = pivotPlacementIndex;
             // Wouldn't want to swap it to the placement index
             // if a pivot element already happens to be there!
-            while (numbers[pivotPlacement] === pivotElement) {
+            while (currentNumbers[pivotPlacement] === pivotElement) {
               pivotPlacement++;
             }
             // swap
-            numbers[i] = numbers[pivotPlacement];
-            numbers[pivotPlacement] = pivotElement;
+            currentNumbers[i] = currentNumbers[pivotPlacement];
+            currentNumbers[pivotPlacement] = pivotElement;
             // Don't just do pivotPlacementIndex++ b/c it may have increased by multiple spots
             pivotPlacementIndex = pivotPlacement + 1;
           }
@@ -106,36 +107,36 @@ function QuickSortCanvas() {
         b >= start + (lessThanPivotCount + pivotCount)
       ) {
         //console.log("here3");
-        if (numbers[a] < pivotElement && numbers[b] > pivotElement) {
+        if (currentNumbers[a] < pivotElement && currentNumbers[b] > pivotElement) {
           // No swap needed
           a++;
           b--;
           continue;
-        } else if (numbers[a] < pivotElement && numbers[b] < pivotElement) {
+        } else if (currentNumbers[a] < pivotElement && currentNumbers[b] < pivotElement) {
           // a is fine, but b is not
           a++;
           continue;
-        } else if (numbers[a] > pivotElement && numbers[b] > pivotElement) {
+        } else if (currentNumbers[a] > pivotElement && currentNumbers[b] > pivotElement) {
           // b is fine but a is not
           b--;
           continue;
-        } else if (numbers[a] > pivotElement && numbers[b] < pivotElement) {
+        } else if (currentNumbers[a] > pivotElement && currentNumbers[b] < pivotElement) {
           // Both are out of place, swap and continue
-          const temp = numbers[a];
-          numbers[a] = numbers[b];
-          numbers[b] = temp;
+          const temp = currentNumbers[a];
+          currentNumbers[a] = currentNumbers[b];
+          currentNumbers[b] = temp;
           a++;
           b--;
         }
       }
 
       // Visualization
-      redraw(start, end, numbers, pivotElement, false);
+      redraw(start, end, currentNumbers, pivotElement, false);
       await new Promise((f) => setTimeout(f, speed));
 
       // Partition is complete now, recur
-      await partition(start, start + lessThanPivotCount);
-      await partition(start + lessThanPivotCount + pivotCount, end);
+      await partition(currentNumbers, start, start + lessThanPivotCount);
+      await partition(currentNumbers, start + lessThanPivotCount + pivotCount, end);
 
       return;
     }
@@ -239,8 +240,7 @@ function QuickSortCanvas() {
               marginTop: "5px",
               marginRight: "50px",
             }}
-            onClick={() => quickSort()}
-          >
+            onClick={() => quickSort(numbers, true)}>
             Quick Sort
           </button>
         </span>
